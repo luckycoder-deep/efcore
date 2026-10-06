@@ -1,0 +1,35 @@
+// IMPORTANT: This file is read by the merge flow from main branch only. 
+{
+    "merge-flow-configurations": {
+        // Automate opening PRs to merge release/8.0 to release/9.0
+        "release/8.0":{
+            "MergeToBranch": "release/9.0",
+            "ExtraSwitches": "-QuietComments"
+        },
+        // Automate opening PRs to merge release/9.0 to release/10.0
+        "release/9.0":{
+            "MergeToBranch": "release/10.0",
+            "ExtraSwitches": "-QuietComments"
+        },
+        // Automate opening PRs to merge release/10.0 to release/11.0
+        "release/10.0":{
+            "MergeToBranch": "release/11.0",
+            "ExtraSwitches": "-QuietComments"
+        },
+        // Automate opening PRs to merge release/11.0 to main
+        "release/11.0":{
+            "MergeToBranch": "main",
+            "ExtraSwitches": "-QuietComments"
+        },
+        // Automate merging efcore release/11.0-rc1 branch into release/11.0
+        "release/11.0-rc1":{
+            "MergeToBranch": "release/11.0",
+            "ExtraSwitches": "-QuietComments"
+        },
+        // Automate merging efcore release/11.0-rc2 branch into release/11.0
+        "release/11.0-rc2":{
+            "MergeToBranch": "release/11.0",
+            "ExtraSwitches": "-QuietComments"
+        }
+    }
+}

@@ -1,0 +1,43 @@
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+namespace Microsoft.EntityFrameworkCore.Query;
+
+public class QueryFilterFuncletizationSqliteTest : QueryFilterFuncletizationTestBase<
+    QueryFilterFuncletizationSqliteTest.QueryFilterFuncletizationSqliteFixture>
+{
+    public QueryFilterFuncletizationSqliteTest(
+        QueryFilterFuncletizationSqliteFixture fixture,
+        ITestOutputHelper testOutputHelper)
+        : base(fixture)
+    {
+        Fixture.TestSqlLoggerFactory.Clear();
+        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+    }
+
+    public override void Using_multiple_entities_with_filters_reuses_parameters()
+    {
+        base.Using_multiple_entities_with_filters_reuses_parameters();
+
+        AssertSql(
+            """
+@ef_filter__Tenant='1'
+
+SELECT "d"."Id", "d"."Tenant", "d0"."Id", "d0"."DeDupeFilter1Id", "d0"."TenantX", "d1"."Id", "d1"."DeDupeFilter1Id", "d1"."Tenant"
+FROM "DeDupeFilter1" AS "d"
+LEFT JOIN "DeDupeFilter2" AS "d0" ON "d"."Id" = "d0"."DeDupeFilter1Id" AND "d0"."TenantX" = @ef_filter__Tenant
+LEFT JOIN "DeDupeFilter3" AS "d1" ON "d"."Id" = "d1"."DeDupeFilter1Id" AND "d1"."Tenant" = @ef_filter__Tenant
+WHERE "d"."Tenant" = @ef_filter__Tenant
+ORDER BY "d"."Id", "d0"."Id"
+""");
+    }
+
+    private void AssertSql(params string[] expected)
+        => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    public class QueryFilterFuncletizationSqliteFixture : QueryFilterFuncletizationRelationalFixture
+    {
+        protected override ITestStoreFactory TestStoreFactory
+            => SqliteTestStoreFactory.Instance;
+    }
+}

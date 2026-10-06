@@ -1,0 +1,200 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Globalization;
+using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
+using Microsoft.EntityFrameworkCore.Sqlite.Internal;
+
+namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal;
+
+/// <summary>
+///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+///     any release. You should only use it directly in your code with extreme caution and knowing that
+///     doing so can result in application failures when updating to a new Entity Framework Core release.
+/// </summary>
+public class SqliteRelationalConnection : RelationalConnection, ISqliteRelationalConnection
+{
+    private readonly IRawSqlCommandBuilder _rawSqlCommandBuilder;
+    private readonly IDiagnosticsLogger<DbLoggerCategory.Infrastructure> _logger;
+    private readonly bool _loadSpatialite;
+    private readonly int? _commandTimeout;
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public SqliteRelationalConnection(
+        RelationalConnectionDependencies dependencies,
+        IRawSqlCommandBuilder rawSqlCommandBuilder,
+        IDiagnosticsLogger<DbLoggerCategory.Infrastructure> logger)
+        : base(dependencies)
+    {
+        _rawSqlCommandBuilder = rawSqlCommandBuilder;
+        _logger = logger;
+
+        var optionsExtension = dependencies.ContextOptions.Extensions.OfType<SqliteOptionsExtension>().FirstOrDefault();
+        if (optionsExtension != null)
+        {
+            _loadSpatialite = optionsExtension.LoadSpatialite;
+
+            var relationalOptions = RelationalOptionsExtension.Extract(dependencies.ContextOptions);
+            _commandTimeout = relationalOptions.CommandTimeout;
+
+            if (relationalOptions.Connection != null)
+            {
+                InitializeDbConnection(relationalOptions.Connection);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected override DbConnection CreateDbConnection()
+    {
+        var connection = new SqliteConnection(GetValidatedConnectionString());
+        InitializeDbConnection(connection);
+
+        return connection;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual ISqliteRelationalConnection CreateReadOnlyConnection()
+    {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder(GetValidatedConnectionString())
+        {
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false
+        };
+
+        var contextOptions = new DbContextOptionsBuilder().UseSqlite(connectionStringBuilder.ToString()).Options;
+
+        return new SqliteRelationalConnection(Dependencies with { ContextOptions = contextOptions }, _rawSqlCommandBuilder, _logger);
+    }
+
+    private void InitializeDbConnection(DbConnection connection)
+    {
+        if (_loadSpatialite)
+        {
+            SpatialiteLoader.Load(connection);
+        }
+
+        if (connection is SqliteConnection sqliteConnection)
+        {
+            if (_commandTimeout.HasValue)
+            {
+                sqliteConnection.DefaultTimeout = _commandTimeout.Value;
+            }
+
+            sqliteConnection.CreateFunction<string, string, bool?>(
+                name: "regexp",
+                static (pattern, input)
+                    => input == null
+                    || pattern == null
+                        ? null
+                        : Regex.IsMatch(input, pattern, RegexOptions.NonBacktracking, TimeSpan.FromMilliseconds(1000)),
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_mod",
+                static (decimal? dividend, decimal? divisor) => divisor == 0m ? null : dividend % divisor,
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_add",
+                static (decimal? left, decimal? right) => left + right,
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_divide",
+                static (decimal? dividend, decimal? divisor) => divisor == 0m ? null : dividend / divisor,
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_compare",
+                static (decimal? left, decimal? right) => left.HasValue && right.HasValue
+                    ? decimal.Compare(left.Value, right.Value)
+                    : default(int?),
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_multiply",
+                static (decimal? left, decimal? right) => left * right,
+                isDeterministic: true);
+
+            sqliteConnection.CreateFunction(
+                name: "ef_negate",
+                static (decimal? m) => -m,
+                isDeterministic: true);
+
+            sqliteConnection.CreateAggregate(
+                name: "ef_avg",
+                seed: (0m, 0ul),
+                static ((decimal sum, ulong count) acc, decimal? value) => value is null
+                    ? acc
+                    : (acc.sum + value.Value, acc.count + 1),
+                static ((decimal sum, ulong count) acc) => acc.count == 0
+                    ? default(decimal?)
+                    : acc.sum / acc.count,
+                isDeterministic: true);
+
+            sqliteConnection.CreateAggregate(
+                name: "ef_max",
+                seed: null,
+                static (decimal? max, decimal? value) => max is null
+                    ? value
+                    : value is null
+                        ? max
+                        : decimal.Max(max.Value, value.Value),
+                isDeterministic: true);
+
+            sqliteConnection.CreateAggregate(
+                name: "ef_min",
+                seed: null,
+                static (decimal? min, decimal? value) => min is null
+                    ? value
+                    : value is null
+                        ? min
+                        : decimal.Min(min.Value, value.Value),
+                isDeterministic: true);
+
+            sqliteConnection.CreateAggregate(
+                name: "ef_sum",
+                seed: null,
+                static (decimal? sum, decimal? value) => value is null
+                    ? sum
+                    : sum is null
+                        ? value
+                        : sum.Value + value.Value,
+                isDeterministic: true);
+
+            sqliteConnection.CreateCollation(
+                name: "EF_DECIMAL",
+                static (x, y) => (decimal.TryParse(x, NumberStyles.Number | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var xValue),
+                        decimal.TryParse(y, NumberStyles.Number | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var yValue)) switch
+                    {
+                        (true, true) => decimal.Compare(xValue, yValue),
+                        (true, _) => -1,
+                        (_, true) => 1,
+                        _ => string.CompareOrdinal(x, y)
+                    });
+        }
+        else
+        {
+            _logger.UnexpectedConnectionTypeWarning(connection.GetType());
+        }
+    }
+}
