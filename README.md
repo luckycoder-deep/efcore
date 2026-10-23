@@ -1,17 +1,3 @@
-# Repository
-
-[![build status](https://img.shields.io/azure-devops/build/dnceng-public/public/17/main)](https://dev.azure.com/dnceng-public/public/_build?definitionId=17) [![test results](https://img.shields.io/azure-devops/tests/dnceng-public/public/17/main)](https://dev.azure.com/dnceng-public/public/_build?definitionId=17)
-
-This repository is home to the following [.NET Foundation](https://dotnetfoundation.org/) projects. These projects are maintained by [Microsoft](https://github.com/microsoft) and licensed under the [MIT License](LICENSE.txt).
-
-* [Entity Framework Core](#entity-framework-core)
-* [Microsoft.Data.Sqlite](#microsoftdatasqlite)
-
-## <img alt="EF" src="./logo/ef-logo.png" width="32"/> Entity Framework Core
-
-[![latest version](https://img.shields.io/nuget/v/Microsoft.EntityFrameworkCore)](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore) [![preview version](https://img.shields.io/nuget/vpre/Microsoft.EntityFrameworkCore)](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/absoluteLatest) [![downloads](https://img.shields.io/nuget/dt/Microsoft.EntityFrameworkCore)](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore)
-
-EF Core is a modern object-database mapper for .NET. It supports LINQ queries, change tracking, updates, and schema migrations. EF Core works with SQL Server, Azure SQL Database, SQLite, Azure Cosmos DB, MariaDB, MySQL, PostgreSQL, and other databases through a provider plugin API.
 
 ### Installation
 
@@ -122,12 +108,3 @@ We welcome community pull requests for bug fixes, enhancements, and documentatio
 
 If you have a specific question about using these projects, we encourage you to [ask it on Stack Overflow](https://stackoverflow.com/questions/tagged/microsoft.data.sqlite). If you encounter a bug or would like to request a feature, [submit an issue](https://github.com/dotnet/efcore/issues/new/choose). For more details, see [getting support](.github/SUPPORT.md).
 
-## See also
-
-* [Documentation](https://docs.microsoft.com/ef/core/)
-* [Roadmap](https://docs.microsoft.com/ef/core/what-is-new/roadmap)
-* [Weekly status updates](https://github.com/dotnet/efcore/issues/23884)
-* [Release planning process](https://docs.microsoft.com/ef/core/what-is-new/release-planning)
-* [How to write an EF Core provider](https://docs.microsoft.com/ef/core/providers/writing-a-provider)
-* [Security](./docs/security.md)
-* [Code of conduct](.github/CODE_OF_CONDUCT.md)
